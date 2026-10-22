@@ -1,0 +1,1 @@
+Smart Translator - developed by Mikołaj Niezbrzycki, Oskar Warda and Bartosz Pieniak for Introduction to Mobile Systems class
