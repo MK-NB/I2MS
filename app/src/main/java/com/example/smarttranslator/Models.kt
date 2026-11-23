@@ -76,6 +76,12 @@ val visualCategories = listOf(
                     Icons.AutoMirrored.Filled.ArrowForward,
                     Icons.Default.Train),
                 phrase = "Where is the nearest station?"
+            ),
+            VisualPhrase(
+                symbolIcons = listOf(Icons.Default.DirectionsBus,
+                    Icons.AutoMirrored.Filled.Help,
+                    Icons.Default.Schedule),
+                phrase = "Does this bus go to the city center?"
             )
         )
     ),
@@ -100,6 +106,12 @@ val visualCategories = listOf(
                     Icons.Default.CreditCard,
                     Icons.Default.ThumbUp),
                 phrase = "Can I pay the bill?"
+            ),
+            VisualPhrase(
+                symbolIcons = listOf(Icons.Default.Restaurant,
+                    Icons.AutoMirrored.Filled.Help,
+                    Icons.Default.ThumbUp),
+                phrase = "Do you have vegetarian options?"
             )
         )
     ),
@@ -119,6 +131,12 @@ val visualCategories = listOf(
                     Icons.Default.Bed,
                     Icons.Default.PanTool),
                 phrase = "Can I have my room key?"
+            ),
+            VisualPhrase(
+                symbolIcons = listOf(Icons.Default.Hotel,
+                    Icons.Default.Schedule,
+                    Icons.Default.PanTool),
+                phrase = "What time is check-out?"
             )
         )
     ),
@@ -137,6 +155,12 @@ val visualCategories = listOf(
                     Icons.AutoMirrored.Filled.ArrowForward,
                     Icons.Default.Wc),
                 phrase = "Where is the restroom?"
+            ),
+            VisualPhrase(
+                symbolIcons = listOf(Icons.Default.MedicalServices,
+                    Icons.AutoMirrored.Filled.DirectionsWalk,
+                    Icons.AutoMirrored.Filled.ArrowForward),
+                phrase = "Where is the nearest pharmacy?"
             )
         )
     )

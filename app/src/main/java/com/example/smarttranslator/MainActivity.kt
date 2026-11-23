@@ -138,7 +138,7 @@ fun HomeScreen(onTextClick: () -> Unit, onVisualClick: () -> Unit) {
         ) {
             Icon(
                 imageVector = Icons.Default.Translate,
-                contentDescription = null,
+                contentDescription = "App logo",
                 modifier = Modifier.size(100.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -153,6 +153,31 @@ fun HomeScreen(onTextClick: () -> Unit, onVisualClick: () -> Unit) {
             )
 
             Spacer(modifier = Modifier.height(64.dp))
+
+            Button(
+                onClick = onVisualClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .padding(4.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(imageVector = Icons.Default.GridView, contentDescription = null, modifier = Modifier.size(40.dp))
+                    Spacer(modifier = Modifier.width(24.dp))
+                    Column {
+                        Text(text = "Quick phrases", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "Speak using simple symbols", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSecondary)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = onTextClick,
@@ -173,31 +198,6 @@ fun HomeScreen(onTextClick: () -> Unit, onVisualClick: () -> Unit) {
                     Column {
                         Text(text = "Text translator", fontSize = 22.sp, fontWeight = FontWeight.Bold)
                         Text(text = "Enter your own text", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimary)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = onVisualClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-                    .padding(4.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Start,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(imageVector = Icons.Default.GridView, contentDescription = null, modifier = Modifier.size(40.dp))
-                    Spacer(modifier = Modifier.width(24.dp))
-                    Column {
-                        Text(text = "Picture translator", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        Text(text = "Speak using simple symbols", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSecondary)
                     }
                 }
             }
