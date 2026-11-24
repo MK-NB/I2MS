@@ -28,20 +28,25 @@ import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.google.mlkit.nl.translate.TranslateLanguage
 
-data class LanguageOption(val name: String, val code: String)
+data class LanguageOption(val name: String, val code: String, val localeTag: String)
 
 val supportedLanguages = listOf(
-    LanguageOption("Czech", TranslateLanguage.CZECH),
-    LanguageOption("English", TranslateLanguage.ENGLISH),
-    LanguageOption("French", TranslateLanguage.FRENCH),
-    LanguageOption("German", TranslateLanguage.GERMAN),
-    LanguageOption("Italian", TranslateLanguage.ITALIAN),
-    LanguageOption("Polish", TranslateLanguage.POLISH),
-    LanguageOption("Portuguese", TranslateLanguage.PORTUGUESE),
-    LanguageOption("Russian", TranslateLanguage.RUSSIAN),
-    LanguageOption("Spanish", TranslateLanguage.SPANISH),
-    LanguageOption("Ukrainian", TranslateLanguage.UKRAINIAN)
+    LanguageOption("Czech", TranslateLanguage.CZECH, "cs-CZ"),
+    LanguageOption("English", TranslateLanguage.ENGLISH, "en-US"),
+    LanguageOption("French", TranslateLanguage.FRENCH, "fr-FR"),
+    LanguageOption("German", TranslateLanguage.GERMAN, "de-DE"),
+    LanguageOption("Italian", TranslateLanguage.ITALIAN, "it-IT"),
+    LanguageOption("Polish", TranslateLanguage.POLISH, "pl-PL"),
+    LanguageOption("Portuguese", TranslateLanguage.PORTUGUESE, "pt-PT"),
+    LanguageOption("Russian", TranslateLanguage.RUSSIAN, "ru-RU"),
+    LanguageOption("Spanish", TranslateLanguage.SPANISH, "es-ES"),
+    LanguageOption("Ukrainian", TranslateLanguage.UKRAINIAN, "uk-UA")
 )
+
+private val languagesByCode = supportedLanguages.associateBy { it.code }
+
+fun languageOf(code: String, fallback: String = TranslateLanguage.ENGLISH): LanguageOption =
+    languagesByCode[code] ?: languagesByCode.getValue(fallback)
 
 data class VisualPhrase(
     val symbolIcons: List<ImageVector>,
@@ -60,27 +65,35 @@ val visualCategories = listOf(
         icon = Icons.Default.DirectionsBus,
         visualPhrases = listOf(
             VisualPhrase(
-                symbolIcons = listOf(Icons.Default.DirectionsBus,
+                symbolIcons = listOf(
+                    Icons.Default.DirectionsBus,
                     Icons.AutoMirrored.Filled.ArrowForward,
-                    Icons.Default.Schedule),
+                    Icons.Default.Schedule
+                ),
                 phrase = "What time does the next bus leave?"
             ),
             VisualPhrase(
-                symbolIcons = listOf(Icons.Default.ConfirmationNumber,
+                symbolIcons = listOf(
+                    Icons.Default.ConfirmationNumber,
                     Icons.AutoMirrored.Filled.Help,
-                    Icons.Default.AttachMoney),
+                    Icons.Default.AttachMoney
+                ),
                 phrase = "How much is the ticket?"
             ),
             VisualPhrase(
-                symbolIcons = listOf(Icons.AutoMirrored.Filled.DirectionsWalk,
+                symbolIcons = listOf(
+                    Icons.AutoMirrored.Filled.DirectionsWalk,
                     Icons.AutoMirrored.Filled.ArrowForward,
-                    Icons.Default.Train),
+                    Icons.Default.Train
+                ),
                 phrase = "Where is the nearest station?"
             ),
             VisualPhrase(
-                symbolIcons = listOf(Icons.Default.DirectionsBus,
+                symbolIcons = listOf(
+                    Icons.Default.DirectionsBus,
                     Icons.AutoMirrored.Filled.Help,
-                    Icons.Default.Schedule),
+                    Icons.Default.Schedule
+                ),
                 phrase = "Does this bus go to the city center?"
             )
         )
@@ -90,27 +103,35 @@ val visualCategories = listOf(
         icon = Icons.Default.Restaurant,
         visualPhrases = listOf(
             VisualPhrase(
-                symbolIcons = listOf(Icons.AutoMirrored.Filled.MenuBook,
+                symbolIcons = listOf(
+                    Icons.AutoMirrored.Filled.MenuBook,
                     Icons.Default.Restaurant,
-                    Icons.Default.PanTool),
+                    Icons.Default.PanTool
+                ),
                 phrase = "Could I have the menu, please?"
             ),
             VisualPhrase(
-                symbolIcons = listOf(Icons.Default.LocalBar,
+                symbolIcons = listOf(
+                    Icons.Default.LocalBar,
                     Icons.Default.WaterDrop,
-                    Icons.Default.PanTool),
+                    Icons.Default.PanTool
+                ),
                 phrase = "I'd like still water, please."
             ),
             VisualPhrase(
-                symbolIcons = listOf(Icons.Default.Receipt,
+                symbolIcons = listOf(
+                    Icons.Default.Receipt,
                     Icons.Default.CreditCard,
-                    Icons.Default.ThumbUp),
+                    Icons.Default.ThumbUp
+                ),
                 phrase = "Can I pay the bill?"
             ),
             VisualPhrase(
-                symbolIcons = listOf(Icons.Default.Restaurant,
+                symbolIcons = listOf(
+                    Icons.Default.Restaurant,
                     Icons.AutoMirrored.Filled.Help,
-                    Icons.Default.ThumbUp),
+                    Icons.Default.ThumbUp
+                ),
                 phrase = "Do you have vegetarian options?"
             )
         )
@@ -120,22 +141,27 @@ val visualCategories = listOf(
         icon = Icons.Default.Hotel,
         visualPhrases = listOf(
             VisualPhrase(
-                symbolIcons = listOf(Icons.Default.Wifi,
+                symbolIcons = listOf(
+                    Icons.Default.Wifi,
                     Icons.Default.Key,
                     Icons.AutoMirrored.Filled.Help
                 ),
                 phrase = "What is the Wi-Fi password?"
             ),
             VisualPhrase(
-                symbolIcons = listOf(Icons.Default.Key,
+                symbolIcons = listOf(
+                    Icons.Default.Key,
                     Icons.Default.Bed,
-                    Icons.Default.PanTool),
+                    Icons.Default.PanTool
+                ),
                 phrase = "Can I have my room key?"
             ),
             VisualPhrase(
-                symbolIcons = listOf(Icons.Default.Hotel,
+                symbolIcons = listOf(
+                    Icons.Default.Hotel,
                     Icons.Default.Schedule,
-                    Icons.Default.PanTool),
+                    Icons.Default.PanTool
+                ),
                 phrase = "What time is check-out?"
             )
         )
@@ -145,21 +171,27 @@ val visualCategories = listOf(
         icon = Icons.Default.LocalHospital,
         visualPhrases = listOf(
             VisualPhrase(
-                symbolIcons = listOf(Icons.Default.Warning,
+                symbolIcons = listOf(
+                    Icons.Default.Warning,
                     Icons.Default.MedicalServices,
-                    Icons.Default.LocalHospital),
+                    Icons.Default.LocalHospital
+                ),
                 phrase = "I need a doctor!"
             ),
             VisualPhrase(
-                symbolIcons = listOf(Icons.AutoMirrored.Filled.DirectionsWalk,
+                symbolIcons = listOf(
+                    Icons.AutoMirrored.Filled.DirectionsWalk,
                     Icons.AutoMirrored.Filled.ArrowForward,
-                    Icons.Default.Wc),
+                    Icons.Default.Wc
+                ),
                 phrase = "Where is the restroom?"
             ),
             VisualPhrase(
-                symbolIcons = listOf(Icons.Default.MedicalServices,
+                symbolIcons = listOf(
+                    Icons.Default.MedicalServices,
                     Icons.AutoMirrored.Filled.DirectionsWalk,
-                    Icons.AutoMirrored.Filled.ArrowForward),
+                    Icons.AutoMirrored.Filled.ArrowForward
+                ),
                 phrase = "Where is the nearest pharmacy?"
             )
         )

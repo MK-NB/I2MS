@@ -2,78 +2,72 @@ package com.example.smarttranslator
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.filled.Translate
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.intl.LocaleList
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.nl.translate.TranslateLanguage
-import com.google.mlkit.nl.translate.Translation
-import com.google.mlkit.nl.translate.Translator
-import com.google.mlkit.nl.translate.TranslatorOptions
 import dagger.hilt.android.AndroidEntryPoint
+
+private fun localizedText(text: String, language: LanguageOption) = buildAnnotatedString {
+    withStyle(SpanStyle(localeList = LocaleList(language.localeTag))) {
+        append(text)
+    }
+}
+
+private val appTypography = Typography().let {
+    it.copy(labelLarge = it.labelLarge.copy(fontSize = 16.sp, lineHeight = 22.sp))
+}
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            MaterialTheme(typography = appTypography) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -88,7 +82,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavigation() {
     var currentScreen by rememberSaveable { mutableStateOf("home") }
-    var selectedCategory by rememberSaveable { mutableStateOf<VisualCategory?>(null) }
+    var selectedCategoryTitle by rememberSaveable { mutableStateOf<String?>(null) }
+    val selectedCategory = remember(selectedCategoryTitle) {
+        visualCategories.find { it.title == selectedCategoryTitle }
+    }
+
+    BackHandler(enabled = currentScreen != "home") {
+        currentScreen = if (currentScreen == "visual_phrases") "visual_categories" else "home"
+    }
 
     AnimatedVisibility(visible = currentScreen == "home", enter = fadeIn(), exit = fadeOut()) {
         HomeScreen(
@@ -98,16 +99,14 @@ fun AppNavigation() {
     }
 
     AnimatedVisibility(visible = currentScreen == "text_translator", enter = fadeIn(), exit = fadeOut()) {
-        TextTranslatorScreen(
-            onBackClick = { currentScreen = "home" }
-        )
+        TextTranslatorScreen(onBackClick = { currentScreen = "home" })
     }
 
     AnimatedVisibility(visible = currentScreen == "visual_categories", enter = fadeIn(), exit = fadeOut()) {
         VisualCategoriesScreen(
             onBackClick = { currentScreen = "home" },
             onCategorySelected = { category ->
-                selectedCategory = category
+                selectedCategoryTitle = category.title
                 currentScreen = "visual_phrases"
             }
         )
@@ -116,10 +115,41 @@ fun AppNavigation() {
     AnimatedVisibility(visible = currentScreen == "visual_phrases", enter = fadeIn(), exit = fadeOut()) {
         if (selectedCategory != null) {
             VisualPhrasesScreen(
-                category = selectedCategory!!,
+                category = selectedCategory,
                 onBackClick = { currentScreen = "visual_categories" }
             )
         }
+    }
+}
+
+@Composable
+private fun BackButton(
+    destination: String,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outline
+        ),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.primary
+        ),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = "Go back to $destination",
+            style = MaterialTheme.typography.labelLarge
+        )
     }
 }
 
@@ -128,79 +158,121 @@ fun HomeScreen(onTextClick: () -> Unit, onVisualClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center
+            .background(MaterialTheme.colorScheme.primaryContainer)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(24.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Translate,
+                    contentDescription = null,
+                    modifier = Modifier.size(96.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "SMART TRANSLATOR",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.semantics { heading() }
+                )
+
+                Spacer(modifier = Modifier.height(48.dp))
+
+                HomeActionButton(
+                    icon = Icons.Default.GridView,
+                    title = "Quick phrases",
+                    subtitle = "Speak using simple symbols",
+                    onClick = onVisualClick
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                HomeActionButton(
+                    icon = Icons.Default.Edit,
+                    title = "Text translator",
+                    subtitle = "Enter your own text",
+                    onClick = onTextClick
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(20.dp)
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 88.dp)
+            .border(
+                width = 2.dp,
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.35f),
+                shape = shape
+            ),
+        shape = shape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 3.dp,
+            pressedElevation = 8.dp,
+            focusedElevation = 5.dp,
+            hoveredElevation = 5.dp,
+            disabledElevation = 0.dp
+        )
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Translate,
-                contentDescription = "App logo",
-                modifier = Modifier.size(100.dp),
-                tint = MaterialTheme.colorScheme.primary
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp)
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "SMART TRANSLATOR",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp)
             )
-
-            Spacer(modifier = Modifier.height(64.dp))
-
-            Button(
-                onClick = onVisualClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-                    .padding(4.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Start,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(imageVector = Icons.Default.GridView, contentDescription = null, modifier = Modifier.size(40.dp))
-                    Spacer(modifier = Modifier.width(24.dp))
-                    Column {
-                        Text(text = "Quick phrases", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        Text(text = "Speak using simple symbols", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSecondary)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = onTextClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-                    .padding(4.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Start,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(imageVector = Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(40.dp))
-                    Spacer(modifier = Modifier.width(24.dp))
-                    Column {
-                        Text(text = "Text translator", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        Text(text = "Enter your own text", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimary)
-                    }
-                }
-            }
         }
     }
 }
@@ -210,185 +282,293 @@ fun TextTranslatorScreen(
     onBackClick: () -> Unit,
     viewModel: MainViewModel = hiltViewModel()
 ) {
-    val savedSource by viewModel.textSourceLang.collectAsState()
-    val savedTarget by viewModel.textTargetLang.collectAsState()
-    val sourceLanguage = remember(savedSource) {
-        supportedLanguages.find { it.code == savedSource } ?: supportedLanguages[1]
+    val savedLanguages by viewModel.textLanguages.collectAsState()
+    val languages = savedLanguages ?: return
+    val sourceLanguage = remember(languages.source) {
+        languageOf(languages.source)
     }
-    val targetLanguage = remember(savedTarget) {
-        supportedLanguages.find { it.code == savedTarget } ?: supportedLanguages[5]
+    val targetLanguage = remember(languages.target) {
+        languageOf(languages.target, fallback = TranslateLanguage.POLISH)
     }
+    val state by viewModel.textState.collectAsState()
+    val sourceText by viewModel.sourceText.collectAsState()
 
-    var sourceText by rememberSaveable { mutableStateOf("") }
-    var translatedText by rememberSaveable { mutableStateOf("") }
-
-    var isDownloadingModel by rememberSaveable { mutableStateOf(false) }
-    var currentTranslator by rememberSaveable { mutableStateOf<Translator?>(null) }
-
-    LaunchedEffect(sourceLanguage, targetLanguage) {
-        currentTranslator?.close()
-
-        val options = TranslatorOptions.Builder()
-            .setSourceLanguage(sourceLanguage.code)
-            .setTargetLanguage(targetLanguage.code)
-            .build()
-
-        val client = Translation.getClient(options)
-        currentTranslator = client
-
-        isDownloadingModel = true
-
-        val conditions = DownloadConditions.Builder().build()
-        client.downloadModelIfNeeded(conditions)
-            .addOnSuccessListener {
-                isDownloadingModel = false
-                translatedText = ""
-            }
-            .addOnFailureListener { e ->
-                isDownloadingModel = false
-                translatedText = "An unexpected error occurred: ${e.message}"
-            }
+    var textFieldValue by remember {
+        mutableStateOf(TextFieldValue(sourceText, TextRange(sourceText.length)))
     }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            currentTranslator?.close()
-        }
+    LaunchedEffect(sourceLanguage.code, targetLanguage.code) {
+        viewModel.prepareTextTranslator(sourceLanguage.code, targetLanguage.code)
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .safeDrawingPadding()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        TextButton(onClick = onBackClick) {
-            Text("◄ Back to menu")
-        }
+        BackButton(destination = "menu", onClick = onBackClick)
 
         Text(
             text = "Text Translator",
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.semantics { heading() }
         )
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                TextDropdown(
+                LanguageDropdown(
+                    label = "Source language",
                     selectedLanguage = sourceLanguage,
                     onLanguageSelected = { newSource ->
-                        if (newSource.code == savedTarget) {
-                            viewModel.updateTextLanguages(newSource.code, savedSource)
+                        val newTarget = if (newSource.code == languages.target) {
+                            languages.source
                         } else {
-                            viewModel.updateTextLanguages(newSource.code, savedTarget)
+                            languages.target
                         }
+                        viewModel.updateTextLanguages(newSource.code, newTarget)
                     },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    fillWidth = true
                 )
 
                 IconButton(
-                    onClick = { viewModel.updateTextLanguages(savedTarget, savedSource) }
+                    onClick = {
+                        viewModel.updateTextLanguages(languages.target, languages.source)
+                    },
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.SwapHoriz, contentDescription = null)
+                    Icon(
+                        imageVector = Icons.Default.SwapHoriz,
+                        contentDescription = "Swap languages"
+                    )
                 }
 
-                TextDropdown(
+                LanguageDropdown(
+                    label = "Target language",
                     selectedLanguage = targetLanguage,
                     onLanguageSelected = { newTarget ->
-                        if (newTarget.code == savedSource) {
-                            viewModel.updateTextLanguages(savedTarget, newTarget.code)
+                        val newSource = if (newTarget.code == languages.source) {
+                            languages.target
                         } else {
-                            viewModel.updateTextLanguages(savedSource, newTarget.code)
+                            languages.source
                         }
+                        viewModel.updateTextLanguages(newSource, newTarget.code)
                     },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    fillWidth = true
                 )
             }
         }
 
         OutlinedTextField(
-            value = sourceText,
-            onValueChange = { sourceText = it },
-            label = {
-                Text("Enter text (in ${sourceLanguage.name})")
+            value = textFieldValue,
+            onValueChange = { newValue ->
+                val textChanged = newValue.text != textFieldValue.text
+                textFieldValue = newValue
+                if (textChanged) viewModel.onSourceTextChanged(newValue.text)
             },
+            label = { Text("Enter text (in ${sourceLanguage.name})") },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(170.dp)
+                .heightIn(min = 120.dp)
         )
+
+        when (val s = state) {
+            is TextTranslatorState.Preparing ->
+                StatusRow("Preparing translator…")
+            is TextTranslatorState.DownloadingModel ->
+                StatusRow("Downloading translation model…")
+            is TextTranslatorState.Translating ->
+                StatusRow("Translating…")
+            is TextTranslatorState.Error ->
+                if (s.isDownloadFailure) {
+                    ErrorStatusRow(
+                        message = s.message,
+                        onRetry = { viewModel.retryTextTranslator() }
+                    )
+                }
+            else -> Unit
+        }
 
         Button(
             onClick = {
-                if (sourceText.isNotBlank() && currentTranslator != null) {
-                    currentTranslator?.translate(sourceText)
-                        ?.addOnSuccessListener { result ->
-                            translatedText = result
-                        }
-                        ?.addOnFailureListener { e ->
-                            translatedText = "An unexpected error occurred: ${e.message}"
-                        }
-                }
+                viewModel.translateText(
+                    sourceLanguage.code,
+                    targetLanguage.code,
+                    sourceText
+                )
             },
-            enabled = !isDownloadingModel && sourceText.isNotBlank(),
+            enabled = sourceText.isNotBlank() &&
+                    state !is TextTranslatorState.Preparing &&
+                    state !is TextTranslatorState.DownloadingModel &&
+                    state !is TextTranslatorState.Translating &&
+                    (state as? TextTranslatorState.Error)?.isDownloadFailure != true,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .heightIn(min = 52.dp),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 2.dp,
+                pressedElevation = 6.dp
+            )
         ) {
             Text("Translate")
         }
 
         Text(
             text = "Translation:",
-            fontSize = 18.sp
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() }
         )
 
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = translatedText,
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+        TextResultCard(
+            state = state,
+            onRetry = {
+                viewModel.translateText(
+                    sourceLanguage.code,
+                    targetLanguage.code,
+                    sourceText
                 )
+            }
+        )
+    }
+}
+
+@Composable
+private fun TextResultCard(
+    state: TextTranslatorState,
+    onRetry: () -> Unit
+) {
+    val translationError =
+        (state as? TextTranslatorState.Error)?.takeUnless { it.isDownloadFailure }
+    val content: AnnotatedString = when {
+        state is TextTranslatorState.Success -> localizedText(state.text, languageOf(state.targetLang))
+        translationError != null -> AnnotatedString(translationError.message)
+        else -> AnnotatedString("Your translation will appear here")
+    }
+    val announce = state is TextTranslatorState.Success || translationError != null
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 160.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = content,
+                style = MaterialTheme.typography.titleLarge,
+                color = if (translationError != null) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                },
+                modifier = Modifier.semantics {
+                    if (announce) liveRegion = LiveRegionMode.Polite
+                }
+            )
+            if (translationError != null) {
+                TextButton(onClick = onRetry) {
+                    Text("Retry")
+                }
             }
         }
     }
 }
 
 @Composable
-fun TextDropdown(
-    selectedLanguage: LanguageOption,
+private fun StatusRow(text: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) {
+                liveRegion = LiveRegionMode.Polite
+            }
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(20.dp),
+            strokeWidth = 2.dp
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text = text, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+private fun ErrorStatusRow(
+    message: String,
+    onRetry: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier
+                .weight(1f)
+                .semantics { liveRegion = LiveRegionMode.Polite }
+        )
+        TextButton(
+            onClick = onRetry,
+            modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+        ) {
+            Text("Retry")
+        }
+    }
+}
+
+@Composable
+private fun LanguageDropdown(
+    label: String,
+    selectedLanguage: LanguageOption?,
     onLanguageSelected: (LanguageOption) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    fillWidth: Boolean = false,
+    prefix: String = ""
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    val name = selectedLanguage?.name ?: "…"
 
     Box(modifier = modifier) {
         OutlinedButton(
             onClick = { expanded = true },
-            modifier = Modifier.fillMaxWidth()
+            enabled = selectedLanguage != null,
+            contentPadding = PaddingValues(horizontal = if (fillWidth) 8.dp else 16.dp),
+            modifier = (if (fillWidth) Modifier.fillMaxWidth() else Modifier)
+                .defaultMinSize(minHeight = 48.dp)
+                .semantics { contentDescription = "$label: $name" }
         ) {
-            Text(
-                text = selectedLanguage.name,
-                modifier = Modifier.weight(1f)
-            )
+            Box(
+                Modifier
+                    .weight(1f, fill = fillWidth)
+                    .clearAndSetSemantics { }
+            ) {
+                Text("$prefix$name")
+            }
+            Spacer(Modifier.width(4.dp))
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
                 contentDescription = null
@@ -405,6 +585,9 @@ fun TextDropdown(
                     onClick = {
                         onLanguageSelected(language)
                         expanded = false
+                    },
+                    modifier = Modifier.semantics {
+                        selected = language.code == selectedLanguage?.code
                     }
                 )
             }
@@ -420,21 +603,22 @@ fun VisualCategoriesScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .safeDrawingPadding()
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBackClick) {
-                Text("◄ Back to menu")
-            }
+            BackButton(destination = "menu", onClick = onBackClick)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = "Choose a category:",
-            fontSize = 20.sp,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier
+                .padding(bottom = 16.dp)
+                .semantics { heading() }
         )
 
         LazyVerticalGrid(
@@ -446,22 +630,28 @@ fun VisualCategoriesScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(140.dp)
-                        .clickable { onCategorySelected(category) },
+                        .heightIn(min = 140.dp)
+                        .clickable(
+                            onClickLabel = "Open category",
+                            onClick = { onCategorySelected(category) }
+                        ),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp),
+                            .padding(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
                         Icon(
                             imageVector = category.icon,
                             contentDescription = null,
-                            modifier = Modifier.size(72.dp),
+                            modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -469,7 +659,7 @@ fun VisualCategoriesScreen(
                             text = category.title,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
-                            fontSize = 12.sp
+                            style = MaterialTheme.typography.titleMedium
                         )
                     }
                 }
@@ -486,58 +676,42 @@ fun VisualPhrasesScreen(
 ) {
     val savedLanguage by viewModel.visualTargetLang.collectAsState()
     val selectedTargetLanguage = remember(savedLanguage) {
-        supportedLanguages.find { it.code == savedLanguage } ?: supportedLanguages[0]
+        savedLanguage?.let { languageOf(it) }
     }
-    var activePhraseForDialog by rememberSaveable { mutableStateOf<VisualPhrase?>(null) }
+
+    var activePhraseIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+    val activePhrase = remember(activePhraseIndex, category) {
+        activePhraseIndex?.let { category.visualPhrases.getOrNull(it) }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .safeDrawingPadding()
             .padding(16.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            TextButton(onClick = onBackClick) {
-                Text("◄ Categories")
-            }
+            BackButton(destination = "categories", onClick = onBackClick)
 
-            var langMenuExpanded by rememberSaveable { mutableStateOf(false) }
-            Box {
-                OutlinedButton(
-                    onClick = { langMenuExpanded = true }
-                ) {
-                    Text("Language: ${selectedTargetLanguage.name}")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = null
-                    )
-                }
-                DropdownMenu(
-                    expanded = langMenuExpanded,
-                    onDismissRequest = { langMenuExpanded = false }
-                ) {
-                    supportedLanguages.forEach { lang ->
-                        DropdownMenuItem(
-                            text = { Text(lang.name) },
-                            onClick = {
-                                viewModel.updateVisualTarget(lang.code)
-                                langMenuExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
+            LanguageDropdown(
+                label = "Target language",
+                selectedLanguage = selectedTargetLanguage,
+                onLanguageSelected = { viewModel.updateVisualTarget(it.code) },
+                prefix = "Language: "
+            )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
         ) {
             Icon(
                 imageVector = category.icon,
@@ -545,13 +719,12 @@ fun VisualPhrasesScreen(
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
-
             Spacer(modifier = Modifier.width(12.dp))
-
             Text(
                 text = category.title,
-                fontSize = 25.sp,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { heading() }
             )
         }
 
@@ -560,24 +733,34 @@ fun VisualPhrasesScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(category.visualPhrases) { phrase ->
+            itemsIndexed(category.visualPhrases) { index, phrase ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(150.dp)
-                        .clickable { activePhraseForDialog = phrase },
+                        .heightIn(min = 160.dp)
+                        .clickable(
+                            onClickLabel = "View translation",
+                            onClick = { activePhraseIndex = index }
+                        ),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Row(
                             modifier = Modifier
-                                .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                                .background(
+                                    MaterialTheme.colorScheme.surface,
+                                    RoundedCornerShape(12.dp)
+                                )
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -586,7 +769,7 @@ fun VisualPhrasesScreen(
                                 Icon(
                                     imageVector = icon,
                                     contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
+                                    modifier = Modifier.size(28.dp),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -596,7 +779,10 @@ fun VisualPhrasesScreen(
 
                         Text(
                             text = phrase.phrase,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 18.sp,
+                                lineHeight = 24.sp
+                            ),
                             fontWeight = FontWeight.Medium,
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -607,11 +793,12 @@ fun VisualPhrasesScreen(
         }
     }
 
-    if (activePhraseForDialog != null) {
+    if (activePhrase != null && selectedTargetLanguage != null) {
         VisualTranslationDialog(
-            phrase = activePhraseForDialog!!,
+            phrase = activePhrase,
             targetLanguage = selectedTargetLanguage,
-            onDismiss = { activePhraseForDialog = null }
+            onDismiss = { activePhraseIndex = null },
+            viewModel = viewModel
         )
     }
 }
@@ -620,42 +807,35 @@ fun VisualPhrasesScreen(
 fun VisualTranslationDialog(
     phrase: VisualPhrase,
     targetLanguage: LanguageOption,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    viewModel: MainViewModel = hiltViewModel()
 ) {
-    var translatedResult by rememberSaveable { mutableStateOf("Translating...") }
-    var isLoading by rememberSaveable { mutableStateOf(true) }
-
-    LaunchedEffect(phrase, targetLanguage) {
-        isLoading = true
-        val options = TranslatorOptions.Builder()
-            .setSourceLanguage(TranslateLanguage.ENGLISH)
-            .setTargetLanguage(targetLanguage.code)
-            .build()
-        val translator = Translation.getClient(options)
-        val conditions = DownloadConditions.Builder().build()
-
-        translator.downloadModelIfNeeded(conditions)
-            .addOnSuccessListener {
-                translator.translate(phrase.phrase)
-                    .addOnSuccessListener { result ->
-                        translatedResult = result
-                        isLoading = false
-                    }
-                    .addOnFailureListener {
-                        translatedResult = "An unexpected error occurred"
-                        isLoading = false
-                    }
-            }
-            .addOnFailureListener {
-                translatedResult = "An unexpected error occurred"
-                isLoading = false
-            }
+    val latestState by viewModel.phraseState.collectAsState()
+    val state = latestState?.takeIf {
+        it.phrase == phrase.phrase && it.targetLang == targetLanguage.code
     }
+
+    LaunchedEffect(phrase.phrase, targetLanguage.code) {
+        viewModel.translatePhrase(phrase.phrase, targetLanguage.code)
+    }
+
+    val message: AnnotatedString = when (state) {
+        is PhraseTranslatorState.Success -> localizedText(state.text, targetLanguage)
+        is PhraseTranslatorState.Error -> AnnotatedString(state.message)
+        is PhraseTranslatorState.Preparing -> AnnotatedString("Preparing translator…")
+        is PhraseTranslatorState.DownloadingModel -> AnnotatedString("Downloading model…")
+        is PhraseTranslatorState.Translating -> AnnotatedString("Translating…")
+        null -> AnnotatedString("")
+    }
+    val isSuccess = state is PhraseTranslatorState.Success
 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            Button(onClick = onDismiss) {
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+            ) {
                 Text("Close")
             }
         },
@@ -665,11 +845,17 @@ fun VisualTranslationDialog(
         text = {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
             ) {
                 Row(
                     modifier = Modifier
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant,
+                            RoundedCornerShape(16.dp)
+                        )
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -678,39 +864,70 @@ fun VisualTranslationDialog(
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            modifier = Modifier.size(36.dp),
+                            modifier = Modifier.size(48.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
                 Text(
-                    text = phrase.phrase,
-                    fontSize = 14.sp,
+                    text = localizedText(phrase.phrase, languageOf(TranslateLanguage.ENGLISH)),
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                if (state is PhraseTranslatorState.Preparing ||
+                    state is PhraseTranslatorState.DownloadingModel ||
+                    state is PhraseTranslatorState.Translating
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
 
-                if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                } else {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = translatedResult,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                Surface(
+                    color = if (isSuccess) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0f)
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = message,
+                        style = if (isSuccess) {
+                            MaterialTheme.typography.headlineMedium
+                        } else {
+                            MaterialTheme.typography.bodyLarge
+                        },
+                        fontWeight = if (isSuccess) FontWeight.Bold else null,
+                        textAlign = TextAlign.Center,
+                        color = when (state) {
+                            is PhraseTranslatorState.Success ->
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            is PhraseTranslatorState.Error ->
+                                MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .semantics { liveRegion = LiveRegionMode.Polite }
+                    )
+                }
+
+                if (state is PhraseTranslatorState.Error) {
+                    TextButton(
+                        onClick = { viewModel.retryPhrase() },
+                        modifier = Modifier.defaultMinSize(
+                            minWidth = 48.dp,
+                            minHeight = 48.dp
                         )
+                    ) {
+                        Text("Retry")
                     }
                 }
             }

@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.map
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+data class TextLanguages(val source: String, val target: String)
+
 object Settings {
     private val VISUAL_LANG = stringPreferencesKey("visual_lang")
     private val TEXT_SOURCE = stringPreferencesKey("text_source")
@@ -31,9 +33,11 @@ object Settings {
     fun visualTargetFlow(context: Context): Flow<String> = context.dataStore.data
         .map { it[VISUAL_LANG] ?: TranslateLanguage.ENGLISH }
 
-    fun textSourceFlow(context: Context): Flow<String> = context.dataStore.data
-        .map { it[TEXT_SOURCE] ?: TranslateLanguage.ENGLISH }
-
-    fun textTargetFlow(context: Context): Flow<String> = context.dataStore.data
-        .map { it[TEXT_TARGET] ?: TranslateLanguage.POLISH }
+    fun textLanguagesFlow(context: Context): Flow<TextLanguages> = context.dataStore.data
+        .map {
+            TextLanguages(
+                source = it[TEXT_SOURCE] ?: TranslateLanguage.ENGLISH,
+                target = it[TEXT_TARGET] ?: TranslateLanguage.POLISH
+            )
+        }
 }
