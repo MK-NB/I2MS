@@ -18,6 +18,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -29,11 +32,14 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -43,6 +49,9 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -810,13 +819,34 @@ fun VisualTranslationDialog(
     onDismiss: () -> Unit,
     viewModel: MainViewModel = hiltViewModel()
 ) {
-    val latestState by viewModel.phraseState.collectAsState()
-    val state = latestState?.takeIf {
-        it.phrase == phrase.phrase && it.targetLang == targetLanguage.code
+    var optionIndex by rememberSaveable(phrase.phrase) { mutableStateOf(0) }
+    var numberInput by rememberSaveable(phrase.phrase) { mutableStateOf("") }
+    var number by rememberSaveable(phrase.phrase) { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+    val confirmNumber = {
+        number = numberInput
+        focusManager.clearFocus()
     }
 
-    LaunchedEffect(phrase.phrase, targetLanguage.code) {
-        viewModel.translatePhrase(phrase.phrase, targetLanguage.code)
+    val option = phrase.choices?.options?.getOrNull(optionIndex)
+    val sentence = when {
+        phrase.choices != null && option != null ->
+            phrase.choices.template.replace("{x}", option.label)
+        phrase.number != null && number.isNotEmpty() ->
+            phrase.number.template.replace("{n}", number)
+        else -> phrase.phrase
+    }
+    val symbols = phrase.symbolIcons.mapIndexed { index, icon ->
+        if (option != null && index == phrase.choices?.iconIndex) option.icon else icon
+    }
+
+    val latestState by viewModel.phraseState.collectAsState()
+    val state = latestState?.takeIf {
+        it.phrase == sentence && it.targetLang == targetLanguage.code
+    }
+
+    LaunchedEffect(sentence, targetLanguage.code) {
+        viewModel.translatePhrase(sentence, targetLanguage.code)
     }
 
     val message: AnnotatedString = when (state) {
@@ -860,7 +890,7 @@ fun VisualTranslationDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    phrase.symbolIcons.forEach { icon ->
+                    symbols.forEach { icon ->
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
@@ -871,11 +901,53 @@ fun VisualTranslationDialog(
                 }
 
                 Text(
-                    text = localizedText(phrase.phrase, languageOf(TranslateLanguage.ENGLISH)),
+                    text = localizedText(sentence, languageOf(TranslateLanguage.ENGLISH)),
                     style = MaterialTheme.typography.titleLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                phrase.choices?.let { choices ->
+                    FlowRow(
+                        modifier = Modifier.selectableGroup(),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            8.dp, Alignment.CenterHorizontally
+                        )
+                    ) {
+                        choices.options.forEachIndexed { index, choice ->
+                            FilterChip(
+                                selected = index == optionIndex,
+                                onClick = { optionIndex = index },
+                                label = { Text(choice.label) },
+                                modifier = Modifier.semantics { role = Role.RadioButton }
+                            )
+                        }
+                    }
+                }
+
+                phrase.number?.let { slot ->
+                    OutlinedTextField(
+                        value = numberInput,
+                        onValueChange = { input ->
+                            numberInput = input.filter { it.isLetterOrDigit() }.take(6)
+                        },
+                        label = { Text(slot.label) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters,
+                            keyboardType = KeyboardType.Ascii,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(onDone = { confirmNumber() }),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    TextButton(
+                        onClick = { confirmNumber() },
+                        enabled = numberInput != number
+                    ) {
+                        Text("Update translation")
+                    }
+                }
 
                 if (state is PhraseTranslatorState.Preparing ||
                     state is PhraseTranslatorState.DownloadingModel ||
@@ -915,7 +987,14 @@ fun VisualTranslationDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
-                            .semantics { liveRegion = LiveRegionMode.Polite }
+                            .semantics {
+                                if (state is PhraseTranslatorState.Success ||
+                                    state is PhraseTranslatorState.Error ||
+                                    state is PhraseTranslatorState.DownloadingModel
+                                ) {
+                                    liveRegion = LiveRegionMode.Polite
+                                }
+                            }
                     )
                 }
 

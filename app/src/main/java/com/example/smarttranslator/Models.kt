@@ -7,20 +7,28 @@ import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Bed
+import androidx.compose.material.icons.filled.BubbleChart
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.EmojiFoodBeverage
+import androidx.compose.material.icons.filled.Grass
 import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.LocalBar
+import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.Subway
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Train
+import androidx.compose.material.icons.filled.Tram
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.Wc
@@ -48,9 +56,21 @@ private val languagesByCode = supportedLanguages.associateBy { it.code }
 fun languageOf(code: String, fallback: String = TranslateLanguage.ENGLISH): LanguageOption =
     languagesByCode[code] ?: languagesByCode.getValue(fallback)
 
+data class SlotOption(val label: String, val icon: ImageVector)
+
+data class Choices(
+    val template: String,
+    val options: List<SlotOption>,
+    val iconIndex: Int
+)
+
+data class NumberSlot(val label: String, val template: String)
+
 data class VisualPhrase(
     val symbolIcons: List<ImageVector>,
-    val phrase: String
+    val phrase: String,
+    val choices: Choices? = null,
+    val number: NumberSlot? = null
 )
 
 data class VisualCategory(
@@ -70,7 +90,16 @@ val visualCategories = listOf(
                     Icons.AutoMirrored.Filled.ArrowForward,
                     Icons.Default.Schedule
                 ),
-                phrase = "What time does the next bus leave?"
+                phrase = "What time does the next bus leave?",
+                choices = Choices(
+                    template = "What time does the next {x} leave?",
+                    options = listOf(
+                        SlotOption("bus", Icons.Default.DirectionsBus),
+                        SlotOption("train", Icons.Default.Train),
+                        SlotOption("tram", Icons.Default.Tram)
+                    ),
+                    iconIndex = 0
+                )
             ),
             VisualPhrase(
                 symbolIcons = listOf(
@@ -86,7 +115,17 @@ val visualCategories = listOf(
                     Icons.AutoMirrored.Filled.ArrowForward,
                     Icons.Default.Train
                 ),
-                phrase = "Where is the nearest station?"
+                phrase = "Where is the nearest station?",
+                choices = Choices(
+                    template = "Where is the nearest {x}?",
+                    options = listOf(
+                        SlotOption("station", Icons.Default.Train),
+                        SlotOption("bus stop", Icons.Default.DirectionsBus),
+                        SlotOption("tram stop", Icons.Default.Tram),
+                        SlotOption("metro station", Icons.Default.Subway)
+                    ),
+                    iconIndex = 2
+                )
             ),
             VisualPhrase(
                 symbolIcons = listOf(
@@ -94,7 +133,11 @@ val visualCategories = listOf(
                     Icons.AutoMirrored.Filled.Help,
                     Icons.Default.Schedule
                 ),
-                phrase = "Does this bus go to the city center?"
+                phrase = "Does this bus go to the city center?",
+                number = NumberSlot(
+                    label = "Bus number (optional)",
+                    template = "Does bus {n} go to the city center?"
+                )
             )
         )
     ),
@@ -116,7 +159,17 @@ val visualCategories = listOf(
                     Icons.Default.WaterDrop,
                     Icons.Default.PanTool
                 ),
-                phrase = "I'd like still water, please."
+                phrase = "I'd like still water, please.",
+                choices = Choices(
+                    template = "I'd like {x}, please.",
+                    options = listOf(
+                        SlotOption("still water", Icons.Default.WaterDrop),
+                        SlotOption("sparkling water", Icons.Default.BubbleChart),
+                        SlotOption("coffee", Icons.Default.LocalCafe),
+                        SlotOption("tea", Icons.Default.EmojiFoodBeverage)
+                    ),
+                    iconIndex = 1
+                )
             ),
             VisualPhrase(
                 symbolIcons = listOf(
@@ -132,7 +185,16 @@ val visualCategories = listOf(
                     Icons.AutoMirrored.Filled.Help,
                     Icons.Default.ThumbUp
                 ),
-                phrase = "Do you have vegetarian options?"
+                phrase = "Do you have vegetarian options?",
+                choices = Choices(
+                    template = "Do you have {x} options?",
+                    options = listOf(
+                        SlotOption("vegetarian", Icons.Default.Eco),
+                        SlotOption("vegan", Icons.Default.Spa),
+                        SlotOption("gluten-free", Icons.Default.Grass)
+                    ),
+                    iconIndex = 0
+                )
             )
         )
     ),
@@ -154,7 +216,11 @@ val visualCategories = listOf(
                     Icons.Default.Bed,
                     Icons.Default.PanTool
                 ),
-                phrase = "Can I have my room key?"
+                phrase = "Can I have my room key?",
+                number = NumberSlot(
+                    label = "Room number (optional)",
+                    template = "Can I have the key to room {n}?"
+                )
             ),
             VisualPhrase(
                 symbolIcons = listOf(
